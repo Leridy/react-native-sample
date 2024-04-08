@@ -7,9 +7,8 @@
 import React, {FunctionComponent, useState} from 'react';
 import {Alert, Platform, ScrollView, StyleSheet, Text} from 'react-native';
 import {Button} from 'react-native-paper';
-import PushNotificationIOS from '@react-native-community/push-notification-ios';
-// import notification package for android
-import pushNotification from 'react-native-push-notification';
+
+import notifee from '@notifee/react-native';
 
 interface OwnProps {
   onMessage: (message: string) => void;
@@ -19,19 +18,25 @@ type Props = OwnProps;
 
 const NotificationPart: FunctionComponent<Props> = props => {
   const {onMessage} = props;
-
+  const channelIdRef = React.useRef<string | null>(null);
   const [canSendNotification, setCanSendNotification] = useState(false);
 
-  const sendNotification = (title: string, content: string) => {
-    if (Platform.OS === 'ios') {
-      PushNotificationIOS.addNotificationRequest({
-        id: 'notification-id',
+  const sendNotification = async (title: string, content: string) => {
+    console.log('Send Notification:', title, content);
+    try {
+      await notifee.displayNotification({
         title: title,
         body: content,
-        badge: 1,
-        category: 'category-id',
+        android: {
+          channelId: channelIdRef.current || 'default',
+          // 如果你想要通知被按下时打开应用，需要 pressAction
+          pressAction: {
+            id: 'default',
+          },
+        },
       });
-    } else {
+    } catch (error) {
+      onMessage('Send Notification Error');
     }
   };
 
@@ -63,18 +68,29 @@ const NotificationPart: FunctionComponent<Props> = props => {
 
   const handleNotification = async () => {
     try {
-      const title = await asyncPrompt(
-        'Notification Title',
-        'Please input the notification title',
-      );
-      const content = await asyncPrompt(
-        'Notification Content',
-        'Please input the notification content',
-      );
+      let title = 'default title';
+      let content = 'default content';
+      if (Platform.OS === 'ios') {
+        title = await asyncPrompt(
+          'Notification Title',
+          'Please input the notification title',
+        );
+        content = await asyncPrompt(
+          'Notification Content',
+          'Please input the notification content',
+        );
+      } else {
+        title = 'Android Notification';
+        content =
+          'This is a notification from Android, Android does not support `Alert.prompt` to custom title and content.';
+      }
       sendNotification(title, content);
     } catch (error) {
       if (error === 'cancel') {
         onMessage('Cancel Notification');
+      } else {
+        onMessage('Send Notification Error');
+        Alert.alert('Error', String(error));
       }
     }
   };
@@ -82,26 +98,20 @@ const NotificationPart: FunctionComponent<Props> = props => {
   const asyncRequestPermission = async (): Promise<boolean> => {
     return new Promise(async (resolve, reject) => {
       try {
-        if (Platform.OS === 'ios') {
-          const result = await PushNotificationIOS.requestPermissions();
-          if (result.alert) {
-            resolve(true);
-          } else {
-            reject('User refuse the notification permission.');
-          }
-        } else if (Platform.OS === 'android') {
-          const result = await pushNotification.requestPermissions([
-            'alert',
-            'sound',
-            'badge',
-          ]);
-          if (result.alert) {
-            resolve(true);
-          } else {
-            reject('User refuse the notification permission.');
-          }
-          reject('Android does not support this feature.');
+        const settings = await notifee.requestPermission();
+        if (Platform.OS === 'android') {
+          channelIdRef.current = await notifee.createChannel({
+            id: 'default',
+            name: '默认频道',
+          });
         }
+
+        if (settings.authorizationStatus === 1) {
+          resolve(true);
+        } else {
+          reject('User refuse the notification permission.');
+        }
+        reject('Android does not support this feature.');
       } catch (error) {
         reject(error);
       }
