@@ -2,48 +2,120 @@
  * NotificationPart component
  * @description this part mainly show the notification function of the application.
  * 1. first step requires the notification permission.
- * 2. help user to set up a reminder.
- * 3. show the notification when the reminder time comes.
-
+ * 2. help user to send notification.
  */
-import React, {FunctionComponent} from 'react';
-import {Platform, ScrollView, StyleSheet, Text} from 'react-native';
+import React, {FunctionComponent, useState} from 'react';
+import {Alert, Platform, ScrollView, StyleSheet, Text} from 'react-native';
 import {Button} from 'react-native-paper';
-import PushNotification from 'react-native-push-notification';
+import PushNotificationIOS from '@react-native-community/push-notification-ios';
+// import notification package for android
+import pushNotification from 'react-native-push-notification';
 
-interface OwnProps {}
+interface OwnProps {
+  onMessage: (message: string) => void;
+}
 
 type Props = OwnProps;
 
-const NotificationPart: FunctionComponent<Props> = () => {
+const NotificationPart: FunctionComponent<Props> = props => {
+  const {onMessage} = props;
+
+  const [canSendNotification, setCanSendNotification] = useState(false);
+
+  const sendNotification = (title: string, content: string) => {
+    if (Platform.OS === 'ios') {
+      PushNotificationIOS.addNotificationRequest({
+        id: 'notification-id',
+        title: title,
+        body: content,
+        badge: 1,
+        category: 'category-id',
+      });
+    } else {
+    }
+  };
+
+  const asyncPrompt = async (
+    title: string,
+    message: string,
+  ): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      Alert.prompt(
+        title,
+        message,
+        [
+          {
+            text: 'Cancel',
+            onPress: () => reject('cancel'),
+            style: 'cancel',
+          },
+          {
+            text: 'OK',
+            onPress: (content: string = 'default content') => {
+              resolve(content);
+            },
+          },
+        ],
+        'plain-text',
+      );
+    });
+  };
+
+  const handleNotification = async () => {
+    try {
+      const title = await asyncPrompt(
+        'Notification Title',
+        'Please input the notification title',
+      );
+      const content = await asyncPrompt(
+        'Notification Content',
+        'Please input the notification content',
+      );
+      sendNotification(title, content);
+    } catch (error) {
+      if (error === 'cancel') {
+        onMessage('Cancel Notification');
+      }
+    }
+  };
+
+  const asyncRequestPermission = async (): Promise<boolean> => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        if (Platform.OS === 'ios') {
+          const result = await PushNotificationIOS.requestPermissions();
+          if (result.alert) {
+            resolve(true);
+          } else {
+            reject('User refuse the notification permission.');
+          }
+        } else if (Platform.OS === 'android') {
+          const result = await pushNotification.requestPermissions([
+            'alert',
+            'sound',
+            'badge',
+          ]);
+          if (result.alert) {
+            resolve(true);
+          } else {
+            reject('User refuse the notification permission.');
+          }
+          reject('Android does not support this feature.');
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  };
+
   const requestUserPermission = async () => {
     try {
-      // 判断 iOS 和 Android
-      if (Platform.OS === 'ios') {
-        // PushNotification.requestPermissions().then(result => {
-        //   console.log('Notification Permission:', result);
-        // });
-      } else {
-        // PushNotification.createChannel(
-        //   {
-        //     channelId: 'channel-id',
-        //     channelName: 'My channel',
-        //     channelDescription: 'A channel to categorise your notifications',
-        //     soundName: 'default',
-        //     importance: 4,
-        //     vibrate: true,
-        //   },
-        //   created => console.log(`createChannel returned '${created}'`),
-        // );
-        //
-        // PushNotification.localNotification({
-        //   channelId: 'channel-id',
-        //   title: 'Notification Permission',
-        //   message: 'Request Notification Permission',
-        // });
-      }
+      await asyncRequestPermission();
+      onMessage('Request Notification Permission Success');
+      setCanSendNotification(true);
     } catch (error) {
       console.log('Request Notification Permission Error:', error);
+      onMessage(String(error) || 'Request Notification Permission Error');
     }
   };
 
@@ -56,13 +128,15 @@ const NotificationPart: FunctionComponent<Props> = () => {
       <Button mode="contained" onPress={requestUserPermission}>
         <Text>Request Notification Permission</Text>
       </Button>
-      <Text style={styles.h4Title}>Step2: Set up a reminder.</Text>
-      <Button mode="contained" onPress={() => console.log('Set Reminder')}>
-        <Text>Set Reminder</Text>
-      </Button>
       <Text style={styles.h4Title}>
-        Step3: Show the notification when the reminder time comes.
+        Step2: Set up a real-time locale notification.
       </Text>
+      <Button
+        disabled={!canSendNotification}
+        mode="contained"
+        onPress={handleNotification}>
+        <Text>Send a Notification</Text>
+      </Button>
     </ScrollView>
   );
 };

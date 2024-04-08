@@ -6,7 +6,7 @@
 
 import React, {FunctionComponent, useEffect, useState} from 'react';
 import DeviceInfo from 'react-native-device-info';
-import {ScrollView, StyleSheet, Text, View} from 'react-native';
+import {ScrollView, StyleSheet, Text} from 'react-native';
 import {DataTable} from 'react-native-paper';
 
 interface OwnProps {}
