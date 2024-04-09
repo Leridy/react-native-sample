@@ -4,11 +4,17 @@
  * 1. first step requires the notification permission.
  * 2. help user to send notification.
  */
-import React, {FunctionComponent, useState} from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import {Alert, Platform, ScrollView, StyleSheet, Text} from 'react-native';
 import {Button} from 'react-native-paper';
 
 import notifee from '@notifee/react-native';
+import {check, PERMISSIONS} from 'react-native-permissions';
 
 interface OwnProps {
   onMessage: (message: string) => void;
@@ -22,7 +28,6 @@ const NotificationPart: FunctionComponent<Props> = props => {
   const [canSendNotification, setCanSendNotification] = useState(false);
 
   const sendNotification = async (title: string, content: string) => {
-    console.log('Send Notification:', title, content);
     try {
       await notifee.displayNotification({
         title: title,
@@ -124,19 +129,39 @@ const NotificationPart: FunctionComponent<Props> = props => {
       onMessage('Request Notification Permission Success');
       setCanSendNotification(true);
     } catch (error) {
-      console.log('Request Notification Permission Error:', error);
       onMessage(String(error) || 'Request Notification Permission Error');
     }
   };
+
+  const checkNotificationPermission = useCallback(async () => {
+    try {
+      const result = await check(PERMISSIONS.ANDROID.POST_NOTIFICATIONS);
+      if (result === 'granted') {
+        onMessage('Notification Permission Granted');
+        setCanSendNotification(true);
+      } else {
+        onMessage('Notification Permission Denied');
+      }
+    } catch (error) {
+      onMessage('Check Notification Permission Error');
+    }
+  }, [onMessage]);
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      // only work on Android
+      checkNotificationPermission();
+    }
+  }, []);
 
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.h2Title}>Notification</Text>
       <Text style={styles.h4Title}>
-        Step1: Requires the notification permission.
+        Step1: Require/Check the notification permission.
       </Text>
       <Button mode="contained" onPress={requestUserPermission}>
-        <Text>Request Notification Permission</Text>
+        <Text>Request/Check Notification Permission</Text>
       </Button>
       <Text style={styles.h4Title}>
         Step2: Set up a real-time locale notification.

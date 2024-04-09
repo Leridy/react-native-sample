@@ -37,7 +37,7 @@ const FunctionBox: FunctionComponent<Props> = props => {
       {currentTab === 'notification' && (
         <NotificationPart onMessage={handleMessage} />
       )}
-      {currentTab === 'camera' && <CameraPart />}
+      {currentTab === 'camera' && <CameraPart onMessage={handleMessage} />}
       {currentTab === 'bluetooth' && <BluetoothPart />}
       {currentTab === 'geo-location' && <GeoLocationPart />}
       {currentTab === 'file' && <FileSystemPart />}
