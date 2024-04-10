@@ -44,7 +44,7 @@ const FunctionBox: FunctionComponent<Props> = props => {
       {currentTab === 'geo-location' && (
         <GeoLocationPart onMessage={handleMessage} />
       )}
-      {currentTab === 'file' && <FileSystemPart />}
+      {currentTab === 'file' && <FileSystemPart onMessage={handleMessage} />}
       <Snackbar
         style={{
           position: 'absolute',

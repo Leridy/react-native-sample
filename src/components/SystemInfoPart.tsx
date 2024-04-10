@@ -16,12 +16,12 @@ type Props = OwnProps;
 const SystemInfoPart: FunctionComponent<Props> = props => {
   const [systemInfo, setSystemInfo] = useState({});
 
-  const handleGetSystemInfo = () => {
+  const handleGetSystemInfo = async () => {
     // get system information
     const systemInfo = {
-      DeviceName: DeviceInfo.getDeviceName(),
+      DeviceName: await DeviceInfo.getDeviceNameSync(),
       DeviceId: DeviceInfo.getDeviceId(),
-      Manufacturer: DeviceInfo.getManufacturer(),
+      Manufacturer: DeviceInfo.getManufacturerSync(),
       Model: DeviceInfo.getModel(),
       Brand: DeviceInfo.getBrand(),
       SystemName: DeviceInfo.getSystemName(),
@@ -31,9 +31,9 @@ const SystemInfoPart: FunctionComponent<Props> = props => {
       Version: DeviceInfo.getVersion(),
       ReadableVersion: DeviceInfo.getReadableVersion(),
       DeviceType: DeviceInfo.getDeviceType(),
-      IsEmulator: DeviceInfo.isEmulator(),
+      IsEmulator: DeviceInfo.isEmulatorSync(),
       IsTablet: DeviceInfo.isTablet(),
-      IsPinOrFingerprintSet: DeviceInfo.isPinOrFingerprintSet(),
+      IsPinOrFingerprintSet: DeviceInfo.isPinOrFingerprintSetSync(),
       HasNotch: DeviceInfo.hasNotch(),
     };
     setSystemInfo(systemInfo);
