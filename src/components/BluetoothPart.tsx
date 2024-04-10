@@ -1,9 +1,9 @@
-import React, {FunctionComponent, useRef, useState} from 'react';
+import React, {FunctionComponent, useEffect, useRef, useState} from 'react';
 import {Platform, ScrollView, StyleSheet, Text} from 'react-native';
-import {Button} from 'react-native-paper';
+import {Button, List, Modal} from 'react-native-paper';
 import {PERMISSIONS, requestMultiple} from 'react-native-permissions';
 
-import {BleManager} from 'react-native-ble-plx';
+import {BleManager, Device} from 'react-native-ble-plx';
 import DeviceInfo from 'react-native-device-info';
 
 interface OwnProps {
@@ -17,25 +17,29 @@ const ANDROID_BLUETOOTH_PERMISSIONS = [
   PERMISSIONS.ANDROID.BLUETOOTH_CONNECT,
   PERMISSIONS.ANDROID.BLUETOOTH_SCAN,
   PERMISSIONS.ANDROID.BLUETOOTH_ADVERTISE,
+  PERMISSIONS.ANDROID.ACCESS_COARSE_LOCATION,
 ];
 
 const BluetoothPart: FunctionComponent<Props> = props => {
   const {onMessage} = props;
   const bluetoothRef = useRef<BleManager | null>(null);
+  const [devicesList, setDevicesList] = useState<Device[]>([]);
+  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
 
-  if (Platform.OS === 'android') {
-    bluetoothRef.current = new BleManager({
-      restoreStateIdentifier: 'BleInTheBackground',
-      restoreStateFunction: bleRestoredState => {
-        if (bleRestoredState) {
-          console.log('Ble Restored State:', bleRestoredState);
-        }
-      },
-    });
-  } else if (Platform.OS === 'ios' && DeviceInfo.getModel() === 'Simulator') {
-    // if Platform.OS is ios, and in the simulator
-    onMessage('Bluetooth is not supported in the simulator');
-  }
+  useEffect(() => {
+    if (Platform.OS === 'ios' && DeviceInfo.isEmulatorSync()) {
+      onMessage('Bluetooth is not supported in the iOS simulator');
+    } else {
+      bluetoothRef.current = new BleManager({
+        restoreStateIdentifier: 'BleInTheBackground',
+        restoreStateFunction: bleRestoredState => {
+          if (bleRestoredState) {
+            console.log('Ble Restored State:', bleRestoredState);
+          }
+        },
+      });
+    }
+  }, [onMessage]);
 
   const [canUseBluetooth, setCanUseBluetooth] = useState(false);
 
@@ -83,8 +87,9 @@ const BluetoothPart: FunctionComponent<Props> = props => {
     }
   };
 
-  const asyncDeviceScan = async () => {
+  const asyncDeviceScan = async (): Promise<Device[]> => {
     return new Promise((resolve, reject) => {
+      let devices: Device[] = [];
       const manager = bluetoothRef.current;
       if (!manager) {
         reject('Bluetooth is not supported in the simulator');
@@ -95,10 +100,14 @@ const BluetoothPart: FunctionComponent<Props> = props => {
           reject(error);
           return;
         }
-        if (device) {
-          console.log('Device:', device);
+        if (device && devices.length < 10) {
+          if ('_manager' in device) {
+            delete device._manager;
+          }
+          devices.push(device);
+        } else {
+          resolve(devices);
           manager.stopDeviceScan();
-          resolve(device);
         }
       });
     });
@@ -107,7 +116,7 @@ const BluetoothPart: FunctionComponent<Props> = props => {
   const handleScanAndShowList = async () => {
     try {
       const result = await asyncDeviceScan();
-      console.log('Scan Result:', result);
+      setDevicesList(result);
       onMessage('Scan and Show List');
     } catch (e) {
       onMessage('Something wrong with bluetooth function');
@@ -129,11 +138,30 @@ const BluetoothPart: FunctionComponent<Props> = props => {
         disabled={!canUseBluetooth}
         mode="contained"
         onPress={handleScanAndShowList}>
-        <Text>Show the all bluetooth devices we can find</Text>
+        <Text>Show the 10 bluetooth devices we can find</Text>
       </Button>
       <Text style={styles.h4Title}>
-        Step3: Show the all bluetooth devices we can find.
+        Step3: Show recent 10 BLE bluetooth devices we can find.
       </Text>
+      <List.Section style={styles.ListSection}>
+        <List.Subheader>BLE Bluetooth Device List</List.Subheader>
+        {devicesList.map(ele => (
+          <List.Item
+            title={ele.id}
+            key={ele.id}
+            left={() => <List.Icon icon={'bluetooth'} color={'blue'} />}
+            description={ele.name || 'No Name'}
+            onPress={() => setSelectedDevice(ele)}
+          />
+        ))}
+      </List.Section>
+      <Modal
+        style={styles.modal}
+        visible={Boolean(selectedDevice)}
+        onDismiss={() => setSelectedDevice(null)}
+        contentContainerStyle={styles.modalContent}>
+        <Text>{JSON.stringify(selectedDevice, null, 2)}</Text>
+      </Modal>
     </ScrollView>
   );
 };
@@ -155,6 +183,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: 'black',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 4,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  modal: {
+    position: 'absolute',
+    top: 0,
+    width: '100%',
+    height: '100%',
+  },
+  ListSection: {
+    marginBottom: 50,
   },
 });
 

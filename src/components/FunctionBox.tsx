@@ -41,7 +41,9 @@ const FunctionBox: FunctionComponent<Props> = props => {
       {currentTab === 'bluetooth' && (
         <BluetoothPart onMessage={handleMessage} />
       )}
-      {currentTab === 'geo-location' && <GeoLocationPart />}
+      {currentTab === 'geo-location' && (
+        <GeoLocationPart onMessage={handleMessage} />
+      )}
       {currentTab === 'file' && <FileSystemPart />}
       <Snackbar
         style={{

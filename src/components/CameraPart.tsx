@@ -1,13 +1,14 @@
-import React, {FunctionComponent, useRef, useState} from 'react';
+import React, {FunctionComponent, useMemo, useRef, useState} from 'react';
 import {Image, Platform, ScrollView, StyleSheet, Text} from 'react-native';
 import {Button} from 'react-native-paper';
 import {
   checkMultiple,
   PERMISSIONS,
-  request,
   requestMultiple,
 } from 'react-native-permissions';
 import {Camera, useCameraDevice} from 'react-native-vision-camera';
+import {isIOS} from '@notifee/react-native/dist/utils';
+import DeviceInfo from 'react-native-device-info';
 
 interface OwnProps {
   onMessage: (message: string) => void;
@@ -15,8 +16,18 @@ interface OwnProps {
 
 type Props = OwnProps;
 
+const ANDROID_CAMERA_PERMISSIONS = [
+  PERMISSIONS.ANDROID.CAMERA,
+  PERMISSIONS.ANDROID.RECORD_AUDIO,
+];
+
+const IOS_CAMERA_PERMISSIONS = [PERMISSIONS.IOS.CAMERA];
+
 const CameraPart: FunctionComponent<Props> = props => {
   const {onMessage} = props;
+
+  const currentPermissionStrategy =
+    Platform.OS === 'ios' ? IOS_CAMERA_PERMISSIONS : ANDROID_CAMERA_PERMISSIONS;
 
   const cameraRef = useRef<Camera>(null);
 
@@ -26,7 +37,9 @@ const CameraPart: FunctionComponent<Props> = props => {
   // photo data
   const [photoData, setPhotoData] = useState('');
 
-  const requestPermission = async () =>
+  const isIOSSimulator = isIOS && DeviceInfo.isEmulatorSync();
+
+  const checkAndRequestPermisstion = async () =>
     new Promise(async (resolve, reject) => {
       let result = null;
       if (Platform.OS === 'ios') {
@@ -72,7 +85,7 @@ const CameraPart: FunctionComponent<Props> = props => {
         onMessage('Camera Permission Granted');
         setCanUseCamera(true);
       } else {
-        const requestResult = await requestPermission();
+        const requestResult = await checkAndRequestPermisstion();
         if (requestResult) {
           setCanUseCamera(true);
         }
@@ -136,11 +149,12 @@ const CameraPart: FunctionComponent<Props> = props => {
           }}
         />
       )}
-
-      <Text>
-        note:The iOS simulator does not support the camera feature. Please use a
-        real device to test the camera feature.
-      </Text>
+      {isIOSSimulator && (
+        <Text>
+          note:The iOS simulator does not support the camera feature. Please use
+          a real device to test the camera feature.
+        </Text>
+      )}
     </ScrollView>
   );
 };
