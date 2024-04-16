@@ -53,7 +53,11 @@ const SystemInfoPart: FunctionComponent<Props> = props => {
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>System Information</Text>
-      <DataTable>
+      <DataTable
+        style={{
+          width: '100%',
+          marginBottom: 80,
+        }}>
         <DataTable.Header>
           <DataTable.Title>Key</DataTable.Title>
           <DataTable.Title>Value</DataTable.Title>
